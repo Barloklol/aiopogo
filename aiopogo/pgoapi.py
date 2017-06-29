@@ -24,7 +24,7 @@ class PGoApi:
     log = getLogger(__name__)
     log.info('%s v%s', __title__, __version__)
 
-    def __init__(self, lat=None, lon=None, alt=None, proxy=None, device_info=None):
+    def __init__(self, lat=None, lon=None, alt=None, pokemon_proxy=None, niantic_proxy=None, device_info=None):
         self.auth_provider = None
         self.state = RpcState()
 
@@ -34,8 +34,10 @@ class PGoApi:
         self.longitude = lon
         self.altitude = alt
 
-        self.proxy_auth = None
-        self.proxy = proxy
+        self.pokemon_proxy_auth = None
+        self.pokemon_proxy = pokemon_proxy
+        self.niantic_proxy_auth = None
+        self.niantic_proxy = niantic_proxy
         self.device_info = device_info
 
     async def set_authentication(self, provider='ptc', username=None, password=None, timeout=10, locale='en_US', refresh_token=None):
@@ -43,12 +45,14 @@ class PGoApi:
             self.auth_provider = AuthPtc(
                 username,
                 password,
-                proxy=self._proxy,
-                proxy_auth=self.proxy_auth,
+                pokemon_proxy=self._pokemon_proxy,
+                pokemon_proxy_auth=self.pokemon_proxy_auth,
+                niantic_proxy=self._niantic_proxy,
+                niantic_proxy_auth=self.niantic_proxy_auth,
                 timeout=timeout)
         elif provider == 'google':
             self.auth_provider = AuthGoogle(
-                proxy=self._proxy, refresh_token=refresh_token)
+                proxy=self._pokemon_proxy, refresh_token=refresh_token)
             if refresh_token:
                 return await self.auth_provider.get_access_token()
         else:
@@ -87,25 +91,49 @@ class PGoApi:
             self._api_endpoint = URL('https://' + api_url + '/rpc')
 
     @property
-    def proxy(self):
-        return self._proxy
+    def pokemon_proxy(self):
+        return self._pokemon_proxy
 
-    @proxy.setter
-    def proxy(self, proxy):
+    @property
+    def niantic_proxy(self):
+        return self._niantic_proxy
+
+    @pokemon_proxy.setter
+    def pokemon_proxy(self, proxy):
         if proxy is None:
-            self._proxy = proxy
+            self._pokemon_proxy = proxy
         else:
-            self._proxy = URL(proxy)
-            if self._proxy.user:
-                scheme = self._proxy.scheme
+            self._pokemon_proxy = URL(proxy)
+            if self._pokemon_proxy.user:
+                scheme = self._pokemon_proxy.scheme
                 if scheme == 'http':
-                    self.proxy_auth = BasicAuth(
-                        self._proxy.user, self._proxy.password)
+                    self.pokemon_proxy_auth = BasicAuth(
+                        self._pokemon_proxy.user, self._pokemon_proxy.password)
                 elif scheme == 'socks5':
-                    self.proxy_auth = Socks5Auth(
-                        self._proxy.user, self._proxy.password)
+                    self.pokemon_proxy_auth = Socks5Auth(
+                        self._pokemon_proxy.user, self._pokemon_proxy.password)
                 elif scheme == 'socks4':
-                    self.proxy_auth = Socks4Auth(self._proxy.user)
+                    self.pokemon_proxy_auth = Socks4Auth(self._pokemon_proxy.user)
+                else:
+                    raise ValueError(
+                        'Proxy protocol must be http, socks5, or socks4.')
+
+    @niantic_proxy.setter
+    def niantic_proxy(self, proxy):
+        if proxy is None:
+            self._niantic_proxy = proxy
+        else:
+            self._niantic_proxy = URL(proxy)
+            if self._niantic_proxy.user:
+                scheme = self._niantic_proxy.scheme
+                if scheme == 'http':
+                    self.niantic_proxy_auth = BasicAuth(
+                        self._niantic_proxy.user, self._niantic_proxy.password)
+                elif scheme == 'socks5':
+                    self.niantic_proxy_auth = Socks5Auth(
+                        self._niantic_proxy.user, self._niantic_proxy.password)
+                elif scheme == 'socks4':
+                    self.niantic_proxy_auth = Socks4Auth(self._niantic_proxy.user)
                 else:
                     raise ValueError(
                         'Proxy protocol must be http, socks5, or socks4.')
@@ -145,7 +173,7 @@ class PGoApiRequest:
         request = RpcApi(auth_provider, parent.state)
         while True:
             try:
-                response = await request.request(parent.api_endpoint, self._req_method_list, position, parent.device_info, parent._proxy, parent.proxy_auth)
+                response = await request.request(parent.api_endpoint, self._req_method_list, position, parent.device_info, parent._niantic_proxy, parent.niantic_proxy_auth)
                 break
             except AuthTokenExpiredException:
                 self.log.info('Access token rejected! Requesting new one...')
