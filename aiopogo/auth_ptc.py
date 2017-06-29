@@ -45,14 +45,14 @@ class AuthPtc(Auth):
         try:
             now = time()
             async with ClientSession(
-                    connector=SESSIONS.get_connector(self.socks),
+                    connector=SESSIONS.get_connector(self.pokemon_socks),
                     loop=self.loop,
                     headers=(('Host', 'sso.pokemon.com'),
                              ('Connection', 'keep-alive'),
                              ('User-Agent', 'pokemongo/1 CFNetwork/811.4.18 Darwin/16.5.0'),
                              ('Accept-Language', self.locale.lower().replace('_', '-')),
                              ('X-Unity-Version', '5.5.1f1')),
-                    request_class=ProxyClientRequest if self.socks else ClientRequest,
+                    request_class=ProxyClientRequest if self.pokemon_socks else ClientRequest,
                     connector_owner=False,
                     raise_for_status=True,
                     conn_timeout=5.0,
