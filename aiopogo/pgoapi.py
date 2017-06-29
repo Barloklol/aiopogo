@@ -118,7 +118,7 @@ class PGoApi:
                     raise ValueError(
                         'Proxy protocol must be http, socks5, or socks4.')
 
-    @proxy.setter
+    @niantic_proxy.setter
     def niantic_proxy(self, proxy):
         if proxy is None:
             self._niantic_proxy = proxy
